@@ -1,0 +1,504 @@
+// Notes Etc data model — see docs/DESIGN.md §2.
+//
+// Portability note (Risk #1): this schema targets PostgreSQL for the POC and is
+// structured so the SQL Server provider drops in cleanly. To keep one portable
+// schema we deliberately AVOID:
+//   - native enums  (not supported on SQL Server by Prisma) -> use String + app validation
+//   - jsonb / arrays (Postgres-only)                        -> use String (JSON text)
+// Enum-like values are validated against @notesetc/shared enums in the service layer.
+// IDs are app-generated UUIDv7 strings (uuid() default is a safety fallback only).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Identity & access
+// ---------------------------------------------------------------------------
+
+model User {
+  id                String   @id @default(uuid())
+  email             String   @unique
+  displayName       String
+  authSource        String // local | entra
+  entraOid          String?  @unique
+  passwordHash      String? // argon2id; local accounts only
+  isBreakglass      Boolean  @default(false)
+  globalRole        String   @default("member") // global_admin | member
+  status            String   @default("active") // active | disabled
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  lastLoginAt       DateTime?
+
+  groupMemberships  GroupMember[]
+  apiTokens         ApiToken[]
+  sessions          Session[]
+  aiChats           AiChat[]
+  aiMemory          AiMemory?
+
+  @@index([status])
+}
+
+model Group {
+  id            String        @id @default(uuid())
+  name          String        @unique
+  source        String // local | entra
+  entraGroupId  String?       @unique
+  description   String?
+  system        Boolean       @default(false) // seeded, non-deletable (Administrators / All Users)
+  createdAt     DateTime      @default(now())
+
+  members       GroupMember[]
+}
+
+model GroupMember {
+  groupId String
+  userId  String
+  group   Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  // NoAction on this second path: SQL Server forbids multiple cascade paths to
+  // one table (GroupMember is reachable from both Group and User).
+  user    User  @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@id([groupId, userId])
+  @@index([userId])
+}
+
+/// Generic ACL. MVP only ever writes resourceType = "space"; page-level grants
+/// slot in later with no service-layer changes (see DESIGN §3.3).
+model ResourceGrant {
+  id            String   @id @default(uuid())
+  resourceType  String // space | page
+  resourceId    String
+  principalType String // user | group
+  principalId   String
+  role          String // space_admin | editor | viewer
+  grantedById   String?
+  createdAt     DateTime @default(now())
+
+  // principalId is polymorphic (a user OR group id), so there is intentionally
+  // no hard FK here; integrity is enforced in the service layer. Indexed below
+  // for resolution.
+
+  @@unique([resourceType, resourceId, principalType, principalId, role])
+  @@index([resourceType, resourceId])
+  @@index([principalType, principalId])
+}
+
+// ---------------------------------------------------------------------------
+// Knowledge model
+// ---------------------------------------------------------------------------
+
+model Space {
+  id          String   @id @default(uuid())
+  key         String   @unique // short slug, e.g. "IT"
+  name        String
+  description String?
+  icon        String? // Material Symbols icon name, e.g. "engineering"
+  overview    String? // editable space landing content (NEFM markdown)
+  ownerId     String?
+  status      String   @default("active") // active | archived
+  defaultTemplateId String? // template pre-filled for new pages in this space
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  archivedAt  DateTime?
+
+  pages       Page[]
+  attachments Attachment[]
+  templates   Template[]
+
+  @@index([status])
+}
+
+/// A reusable starter body for new pages. Assigned as a space default and/or as a
+/// page's "subpage template". Plain NEFM Markdown, authored in the normal editor.
+model Template {
+  id        String   @id @default(uuid())
+  spaceId   String
+  name      String
+  content   String   @default("")
+  createdById String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  space     Space @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+
+  @@index([spaceId])
+}
+
+model Page {
+  id               String   @id @default(uuid())
+  spaceId          String
+  parentId         String?
+  slug             String
+  // Short, stable, URL-friendly public code (base62). Pretty URLs are
+  // /p/<title-slug>-<shortId>; the slug is cosmetic and resolution is by this
+  // code, so renames/moves never break a link. Nullable only to allow the
+  // backfill migration; the service always assigns one on create.
+  shortId          String?  @unique
+  title            String
+  icon             String? // optional icon id, e.g. "ms:description" or "si:salesforce"
+  // Integration/tooling metadata: a serialized JSON object, namespaced by convention
+  // (e.g. {"entraSync": {...}}). Page-level and NOT versioned — set via the metadata
+  // endpoints, which never create a content version. String (not Json) for SQL Server
+  // portability; the service parses/serializes and validates it is an object.
+  metadata         String?
+  status           String   @default("draft") // draft | published | archived
+  ownerId          String?
+  currentVersionId String?  @unique
+  position         Int      @default(0)
+  createdById      String?
+  updatedById      String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  archivedAt       DateTime?
+  // Maintenance / review lifecycle.
+  reviewIntervalDays Int?      // if set, "mark reviewed" rolls reviewDueAt forward by this
+  reviewDueAt        DateTime? // next date the doc must be checked for accuracy
+  lastReviewedAt     DateTime?
+  lastReviewedById   String?
+  childTemplateId    String?   // template pre-filled for NEW subpages of this page
+
+  space            Space    @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  // NoAction breaks the self-relation cycle (SQL Server requirement); re-parenting
+  // and deletes are handled in the service layer.
+  parent           Page?    @relation("PageTree", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  children         Page[]   @relation("PageTree")
+  versions         PageVersion[] @relation("PageVersions")
+  // NoAction breaks the Page<->PageVersion cycle; this is just the "current" pointer.
+  currentVersion   PageVersion?  @relation("CurrentVersion", fields: [currentVersionId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  proposals        PageProposal[]
+  tags             PageTag[]
+  attachments      Attachment[]
+  maintainers      PageMaintainer[]
+  comments         Comment[]
+
+  @@unique([spaceId, parentId, slug])
+  @@index([spaceId, status])
+  @@index([updatedAt]) // stale-page queries
+  @@index([reviewDueAt]) // maintenance portal: sort/scan by due date
+}
+
+/// Who is responsible for keeping a page reviewed. principalId is polymorphic
+/// (a user OR group id) — no hard FK, integrity enforced in the service layer.
+model PageMaintainer {
+  id            String   @id @default(uuid())
+  pageId        String
+  principalType String // user | group
+  principalId   String
+  createdAt     DateTime @default(now())
+
+  page          Page @relation(fields: [pageId], references: [id], onDelete: Cascade)
+
+  @@unique([pageId, principalType, principalId])
+  @@index([principalType, principalId])
+}
+
+/// Page-level discussion. One level of threading: top-level comments have
+/// parentId = null; replies point at a top-level comment. Author traceability
+/// mirrors PageVersion (human / api_token / ai_tool). Deletes are soft
+/// (status = deleted, body cleared) so reply threads stay intact.
+model Comment {
+  id            String   @id @default(uuid())
+  pageId        String
+  parentId      String?  // null = top-level thread root; set = a reply
+  body          String
+  status        String   @default("active") // active | deleted
+  // Resolve state is only meaningful on a thread root (parentId = null).
+  resolved      Boolean  @default(false)
+  resolvedById  String?
+  resolvedAt    DateTime?
+  authorType    String   // human | api_token | ai_tool | system
+  authorUserId  String?
+  authorTokenId String?
+  aiAgentLabel  String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  editedAt      DateTime?
+
+  page          Page     @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  // NoAction breaks the self-relation cycle (SQL Server); thread integrity is
+  // enforced in the service layer (only one level of nesting).
+  parent        Comment? @relation("CommentThread", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  replies       Comment[] @relation("CommentThread")
+
+  @@index([pageId, status])
+  @@index([parentId])
+}
+
+/// Append-only. Every page edit inserts one row. Restoring = a new version.
+model PageVersion {
+  id            String   @id @default(uuid())
+  pageId        String
+  versionNumber Int
+  title         String
+  content       String // Markdown (NEFM)
+  contentFormat String   @default("hfm/1")
+  changeSummary String?
+  authorType    String // human | api_token | ai_tool
+  authorUserId  String?
+  authorTokenId String?
+  aiAgentLabel  String?
+  createdAt     DateTime @default(now())
+
+  page          Page  @relation("PageVersions", fields: [pageId], references: [id], onDelete: Cascade)
+  currentOf     Page? @relation("CurrentVersion")
+
+  @@unique([pageId, versionNumber])
+  @@index([pageId])
+}
+
+/// Suggested changes as a first-class concept (DESIGN §2.3).
+model PageProposal {
+  id              String   @id @default(uuid())
+  pageId          String
+  baseVersionId   String
+  proposedTitle   String?
+  proposedContent String
+  rationale       String?
+  status          String   @default("open") // open | approved | rejected | superseded
+  originType      String // human | api_token | ai_tool
+  createdById     String?
+  createdTokenId  String?
+  aiAgentLabel    String?
+  reviewedById    String?
+  reviewedAt      DateTime?
+  createdAt       DateTime @default(now())
+
+  page            Page @relation(fields: [pageId], references: [id], onDelete: Cascade)
+
+  @@index([pageId, status])
+}
+
+model Tag {
+  id    String    @id @default(uuid())
+  name  String    @unique
+  pages PageTag[]
+}
+
+model PageTag {
+  pageId String
+  tagId  String
+  page   Page @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  // NoAction on the second path (PageTag is reachable from both Page and Tag).
+  tag    Tag  @relation(fields: [tagId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@id([pageId, tagId])
+  @@index([tagId])
+}
+
+model Attachment {
+  id             String   @id @default(uuid())
+  // Attachments belong to a SPACE (authz scope). pageId is an optional back-link;
+  // it can be null because uploads happen while authoring a not-yet-saved page.
+  spaceId        String
+  pageId         String?
+  filename       String
+  contentType    String
+  sizeBytes      Int
+  storageKey     String   @unique // random; bytes live on a volume, not the webroot
+  checksumSha256 String
+  scanStatus     String   @default("clean") // pending | clean | blocked (no AV yet -> clean)
+  uploadedById   String?
+  authorType     String
+  createdAt      DateTime @default(now())
+
+  // NoAction on both paths keeps SQL Server happy (no multiple-cascade-path errors);
+  // attachment lifecycle is handled in the service layer.
+  space          Space @relation(fields: [spaceId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  page           Page? @relation(fields: [pageId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([spaceId])
+  @@index([pageId])
+}
+
+// ---------------------------------------------------------------------------
+// Operations & config
+// ---------------------------------------------------------------------------
+
+model ApiToken {
+  id             String   @id @default(uuid())
+  name           String
+  tokenHash      String // argon2id of the secret
+  tokenPrefix    String   @unique // for display + fast lookup
+  ownerUserId    String
+  scopes         String   @default("") // space/comma-delimited scope list
+  allowedSpaceIds String? // null = all spaces the owner can see (JSON array text)
+  lastUsedAt     DateTime?
+  expiresAt      DateTime?
+  revokedAt      DateTime?
+  createdAt      DateTime @default(now())
+
+  owner          User @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
+
+  @@index([ownerUserId])
+}
+
+/// Append-only spine. The app DB role should have INSERT-only on this table.
+model AuditLog {
+  id            String   @id @default(uuid())
+  occurredAt    DateTime @default(now())
+  actorType     String // human | api_token | ai_tool | system
+  actorUserId   String?
+  actorTokenId  String?
+  aiAgentLabel  String?
+  action        String
+  targetType    String?
+  targetId      String?
+  spaceId       String?
+  result        String // success | denied | error
+  ip            String?
+  userAgent     String?
+  requestId     String?
+  metadata      String? // JSON text; NEVER contains secrets
+
+  @@index([occurredAt])
+  @@index([actorUserId])
+  @@index([action])
+  @@index([spaceId])
+}
+
+/// Runtime config store — the "manage config in-app" requirement. Sensitive
+/// values are encrypted at rest (isEncrypted = true), sealed with the env master key.
+/// A saved AI-assistant chat, per user. `messages` is JSON text — an array of
+/// { role, content, trace? } owned entirely by the AI module; SQL never
+/// inspects it. Title comes from the first user message.
+model AiChat {
+  id        String   @id @default(uuid())
+  userId    String
+  title     String
+  messages  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([userId, updatedAt])
+}
+
+/// The AI assistant's long-term memory about one user: a JSON object of
+/// short key/value facts (preferred shops, home town, …) maintained by the
+/// agent's update_memory tool and injected into its system prompt.
+model AiMemory {
+  userId    String   @id
+  content   String
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model Setting {
+  key         String   @id
+  value       String
+  isEncrypted Boolean  @default(false)
+  updatedById String?
+  updatedAt   DateTime @updatedAt
+}
+
+model Session {
+  id        String   @id @default(uuid())
+  userId    String
+  // SHA-256 of the opaque session token. The raw token lives only in the
+  // client cookie; a DB leak alone cannot resurrect a session.
+  tokenHash String   @unique
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+  revokedAt DateTime?
+  ip        String?
+  userAgent String?
+
+  user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+/// A user-authored JavaScript automation: fires on page events, a cron schedule,
+/// or a webhook, and runs sandboxed in a worker with the netc.* bridge API.
+/// triggerConfig is JSON text (portability: no Json type on SQL Server):
+///   page_event -> { events: string[], spaceIds?: string[] }
+///   schedule   -> { cron: string, timezone?: string }
+///   webhook    -> {} (slug/secret live in dedicated columns)
+model Automation {
+  id                String   @id @default(uuid())
+  name              String   @unique
+  description       String?
+  enabled           Boolean  @default(false)
+  triggerType       String // page_event | schedule | webhook
+  triggerConfig     String   @default("{}")
+  script            String   @default("")
+  timeoutMs         Int      @default(60000)
+  debugMode         Boolean  @default(false) // persist console.* output to run logs
+  webhookSlug       String?  @unique
+  webhookSecretHash String? // SHA-256 hex of the webhook secret (Session pattern)
+  createdById       String?
+  updatedById       String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  runs AutomationRun[]
+
+  @@index([enabled, triggerType])
+}
+
+model AutomationRun {
+  id             String    @id @default(uuid())
+  automationId   String
+  status         String    @default("queued") // queued|running|success|error|timeout|killed|dead
+  trigger        String // page_event | schedule | webhook | test
+  triggerPayload String? // JSON snapshot of the trigger (capped)
+  dryRun         Boolean   @default(false) // mock mode: writes intercepted
+  debug          Boolean   @default(false) // debugMode captured at start
+  error          String?
+  startedAt      DateTime?
+  finishedAt     DateTime?
+  createdAt      DateTime  @default(now())
+
+  automation Automation         @relation(fields: [automationId], references: [id], onDelete: Cascade)
+  logs       AutomationRunLog[]
+
+  @@index([automationId, createdAt])
+  @@index([status])
+}
+
+/// One structured log entry from a run. A table (not a JSON blob on the run) so
+/// the live test console can poll incrementally by seq.
+model AutomationRunLog {
+  id      String   @id @default(uuid())
+  runId   String
+  seq     Int // monotonic per run
+  ts      DateTime @default(now())
+  source  String // netc | console | mock | system
+  state   String // info | success | warning | error (or console level)
+  message String
+  data    String? // JSON text: extra netc.log fields
+
+  run AutomationRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  @@unique([runId, seq])
+}
+
+/// A named value scripts read via netc.variable('name'). Scoped: scope is either
+/// the literal "global" (readable by every automation) or an automation id (that
+/// script only). Resolution order at runtime: own scope first, then global.
+/// A sentinel string (not a nullable FK) keeps the composite unique portable —
+/// Postgres and SQL Server disagree about NULLs in unique indexes.
+/// Secure variables are AES-256-GCM encrypted at rest (sealed with
+/// MASTER_ENCRYPTION_KEY) and never returned by the admin API — only overwritten
+/// or deleted.
+model AutomationVariable {
+  id          String   @id @default(uuid())
+  scope       String   @default("global") // "global" | <automationId>
+  name        String
+  value       String // plaintext, or iv:tag:ciphertext (base64) when isSecure
+  isSecure    Boolean  @default(false)
+  createdById String?
+  updatedById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([scope, name])
+}

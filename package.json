@@ -1,0 +1,25 @@
+{
+  "name": "notesetc",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Notes Etc — self-hosted enterprise IT knowledgebase",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "dev:api": "npm run dev --workspace @notesetc/api",
+    "dev:web": "npm run dev --workspace @notesetc/web",
+    "format": "prettier --write \"**/*.{ts,tsx,js,json,md}\""
+  },
+  "devDependencies": {
+    "prettier": "^3.4.2",
+    "typescript": "^5.7.3"
+  }
+}

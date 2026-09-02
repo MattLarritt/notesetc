@@ -1,0 +1,49 @@
+{
+  "name": "@notesetc/web",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -p 3100",
+    "build": "next build",
+    "start": "next start -p 3100",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@codemirror/lang-javascript": "^6.2.5",
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
+    "@iconify-json/logos": "^1.2.11",
+    "@notesetc/shared": "*",
+    "@tiptap/core": "^2.27.2",
+    "@tiptap/extension-image": "^2.27.2",
+    "@tiptap/extension-link": "^2.27.2",
+    "@tiptap/extension-table": "^2.27.2",
+    "@tiptap/extension-table-cell": "^2.27.2",
+    "@tiptap/extension-table-header": "^2.27.2",
+    "@tiptap/extension-table-row": "^2.27.2",
+    "@tiptap/pm": "^2.27.2",
+    "@tiptap/react": "^2.27.2",
+    "@tiptap/starter-kit": "^2.27.2",
+    "codemirror": "^6.0.2",
+    "mammoth": "^1.12.2",
+    "markdown-it": "^14.2.0",
+    "markdown-it-container": "^4.0.0",
+    "material-symbols": "^0.31.9",
+    "next": "^15.1.4",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "sanitize-html": "^2.17.5",
+    "simple-icons": "^13.21.0",
+    "tiptap-markdown": "^0.8.10",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@types/markdown-it": "^14.1.2",
+    "@types/node": "^22.10.5",
+    "@types/react": "^19.0.7",
+    "@types/react-dom": "^19.0.3",
+    "@types/sanitize-html": "^2.16.1",
+    "typescript": "^5.7.3"
+  }
+}

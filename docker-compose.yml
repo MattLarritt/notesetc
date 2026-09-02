@@ -1,0 +1,72 @@
+# Notes Etc — local/POC stack. Coolify-friendly (each service is independent;
+# state lives in named volumes). For production, swap `db` for managed MSSQL and
+# point DATABASE_URL at it.
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: notesetc
+      POSTGRES_PASSWORD: notesetc
+      POSTGRES_DB: notesetc
+    ports:
+      - '5432:5432'
+    volumes:
+      - notesetc_db:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U notesetc -d notesetc']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      API_PORT: '4100'
+      WEB_ORIGIN: http://localhost:3100
+      DATABASE_URL: postgresql://notesetc:notesetc@db:5432/notesetc?schema=public
+      # Demo-only secrets — OVERRIDE for any real deployment.
+      MASTER_ENCRYPTION_KEY: ${MASTER_ENCRYPTION_KEY:-ZGV2LW9ubHktMzJieXRlLWtleS1wbGFjZWhvbGRlciE=}
+      SESSION_SECRET: ${SESSION_SECRET:-dev-only-session-secret-change-me}
+      BREAKGLASS_ADMIN_EMAIL: ${BREAKGLASS_ADMIN_EMAIL:-admin@example.com}
+      BREAKGLASS_ADMIN_PASSWORD: ${BREAKGLASS_ADMIN_PASSWORD:-change-me-please-12+}
+    ports:
+      - '4100:4100'
+    volumes:
+      - notesetc_storage:/app/storage # attachments (untrusted), persistent
+    healthcheck:
+      test:
+        ['CMD', 'node', '-e', "fetch('http://localhost:4100/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      # Server-side calls to the API (container network).
+      API_INTERNAL_URL: http://api:4100
+      # Browser-side calls (host).
+      NEXT_PUBLIC_API_BASE_URL: http://localhost:4100
+    ports:
+      - '3100:3100'
+
+volumes:
+  notesetc_db:
+  notesetc_storage:

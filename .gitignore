@@ -1,0 +1,49 @@
+# Dependencies
+node_modules/
+.pnp.*
+
+# Builds
+dist/
+build/
+.next/
+out/
+
+# Env & secrets
+.env
+.env.local
+.env.*.local
+*.pem
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Test / coverage
+coverage/
+
+# Prisma
+apps/api/prisma/*.db
+# Auto-generated MSSQL schema variant (derived from schema.prisma in CI)
+apps/api/prisma/schema.mssql.prisma
+
+# Local file storage (POC attachments volume)
+storage/
+
+# stray debug dumps
+pg.json
+
+# TypeScript incremental build info
+*.tsbuildinfo
+
+# Runtime attachment uploads (local dev)
+apps/api/var/
+
+# Claude Code local overrides
+.claude/settings.local.json

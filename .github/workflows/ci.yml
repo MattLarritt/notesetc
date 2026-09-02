@@ -1,0 +1,74 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  # Primary job: build, lint, unit tests, and migrations on the POC database.
+  build-test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: notesetc
+          POSTGRES_PASSWORD: notesetc
+          POSTGRES_DB: notesetc
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U notesetc" --health-interval 5s
+          --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://notesetc:notesetc@localhost:5432/notesetc?schema=public
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build --workspace @notesetc/shared
+      - run: npm run prisma:generate --workspace @notesetc/api
+      - name: Apply migrations (Postgres)
+        working-directory: apps/api
+        run: npx prisma migrate deploy
+      - run: npm run build
+      - run: npm test
+      - name: Verify OpenAPI spec generates
+        working-directory: apps/api
+        run: node ../../scripts/check-openapi.mjs
+
+  # Risk #1 mitigation: prove the schema is MSSQL-compatible from day one.
+  # We swap the Prisma provider to sqlserver and apply the schema to a real
+  # SQL Server instance. This catches Postgres-only constructs early.
+  mssql-compat:
+    runs-on: ubuntu-latest
+    services:
+      mssql:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          ACCEPT_EULA: 'Y'
+          MSSQL_SA_PASSWORD: 'NotesEtc!Pass1'
+        ports: ['1433:1433']
+        options: >-
+          --health-cmd "/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P 'NotesEtc!Pass1' -Q 'SELECT 1'"
+          --health-interval 10s --health-timeout 5s --health-retries 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build --workspace @notesetc/shared
+      - name: Generate SQL Server schema variant
+        run: node scripts/make-mssql-schema.mjs
+      - name: Validate + apply schema (SQL Server)
+        working-directory: apps/api
+        env:
+          DATABASE_URL: sqlserver://localhost:1433;database=notesetc;user=sa;password=NotesEtc!Pass1;encrypt=true;trustServerCertificate=true
+        run: |
+          npx prisma validate --schema prisma/schema.mssql.prisma
+          npx prisma db push --schema prisma/schema.mssql.prisma --skip-generate

@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <rect width="32" height="32" rx="7" fill="#3e4259" />
+  <!-- Note page with a folded corner; the ellipsis is the "etc". -->
+  <path
+    d="M11 5 h7 l6 6 v13.5 a2.5 2.5 0 0 1 -2.5 2.5 H11 a2.5 2.5 0 0 1 -2.5 -2.5 v-17 A2.5 2.5 0 0 1 11 5 Z"
+    fill="#f2c200"
+  />
+  <path d="M18 5 v6 h6 Z" fill="#d97b0e" />
+  <circle cx="12.4" cy="20" r="1.6" fill="#3e4259" />
+  <circle cx="16.25" cy="20" r="1.6" fill="#3e4259" />
+  <circle cx="20.1" cy="20" r="1.6" fill="#3e4259" />
+</svg>
