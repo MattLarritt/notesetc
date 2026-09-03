@@ -15,6 +15,7 @@ import { Callout, type CalloutKind } from './callout-extension';
 import { Section } from './section-extension';
 import { Subpages } from './subpages-extension';
 import { ApiRegion } from './api-region-extension';
+import { TrailingNode } from './trailing-node-extension';
 import { LinkDialog, type LinkResult } from './link-dialog';
 import { ImageDialog, type ImageResult } from './image-dialog';
 import { Attachment, AttachmentReader } from './attachment-extension';
@@ -73,6 +74,7 @@ export function PageEditor(props: EditorProps) {
       ApiRegion,
       Attachment,
       AttachmentReader,
+      TrailingNode,
       Markdown.configure({ html: false, tightLists: true, transformPastedText: true }),
     ],
     content: props.initialMarkdown ?? '',
