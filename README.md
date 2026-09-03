@@ -6,7 +6,21 @@ Notes Etc is where the important-but-scattered stuff of a household, homelab, or
 
 What makes it different: **AI is a first-class citizen, not a bolt-on.** Every surface — the web app, the REST API, the MCP server, the built-in assistant — goes through one service layer with the same permissions, versioning, and audit trail. So when the assistant answers *"what does the dishwasher manual say about error E24?"* or files a scanned receipt onto the right page, it's operating inside the same guarded walls as everyone else, and every change it makes is attributed to it.
 
-<!-- Screenshots: docs/images/*.png -->
+## Screenshots
+
+*A page: structured Markdown with tables, callouts, code blocks and a live space tree.*
+
+![A Notes Etc page — tables, callouts, code blocks](screenshots/note1.png)
+
+*The AI assistant answers from your notes and shows exactly which pages it read; documents embed with an inline viewer.*
+
+| | |
+| --- | --- |
+| ![AI chat grounded in your notes, with sources](screenshots/in-app-chat.png) | ![A PDF embedded in a page with the inline reader](screenshots/embedded-pdf.png) |
+
+<p align="center">
+  <img src="screenshots/Login.png" alt="Sign-in, with public documentation browsable anonymously" width="640" />
+</p>
 
 ## Features
 
