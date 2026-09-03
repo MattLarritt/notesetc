@@ -31,6 +31,11 @@ export class AuthController {
   ) {}
 
   private get secure(): boolean {
+    // Follow the deployment's actual protocol, not NODE_ENV: a production
+    // container served over plain HTTP (LAN/self-hosted without TLS) must not
+    // set Secure cookies, or browsers silently drop them and login breaks.
+    const origin = this.config.get('WEB_ORIGIN');
+    if (origin) return origin.startsWith('https://');
     return this.config.isProduction;
   }
 
