@@ -1,6 +1,7 @@
-# Notes Etc — local/POC stack. Coolify-friendly (each service is independent;
-# state lives in named volumes). For production, swap `db` for managed MSSQL and
-# point DATABASE_URL at it.
+# Notes Etc — local/POC stack: one app container (API + web) plus Postgres.
+# The app publishes ONE port; the web server inside proxies /api/v1, /docs
+# and /healthz to the API process. For production, put real secrets in .env
+# and bind the storage volume to something you back up.
 
 services:
   db:
@@ -10,8 +11,6 @@ services:
       POSTGRES_USER: notesetc
       POSTGRES_PASSWORD: notesetc
       POSTGRES_DB: notesetc
-    ports:
-      - '5432:5432'
     volumes:
       - notesetc_db:/var/lib/postgresql/data
     healthcheck:
@@ -20,17 +19,15 @@ services:
       timeout: 5s
       retries: 10
 
-  api:
-    build:
-      context: .
-      dockerfile: apps/api/Dockerfile
+  app:
+    build: .
+    image: mattlarritt/notesetc:latest
     restart: unless-stopped
     depends_on:
       db:
         condition: service_healthy
     environment:
       NODE_ENV: production
-      API_PORT: '4100'
       WEB_ORIGIN: http://localhost:3100
       DATABASE_URL: postgresql://notesetc:notesetc@db:5432/notesetc?schema=public
       # Demo-only secrets — OVERRIDE for any real deployment.
@@ -38,34 +35,19 @@ services:
       SESSION_SECRET: ${SESSION_SECRET:-dev-only-session-secret-change-me}
       BREAKGLASS_ADMIN_EMAIL: ${BREAKGLASS_ADMIN_EMAIL:-admin@example.com}
       BREAKGLASS_ADMIN_PASSWORD: ${BREAKGLASS_ADMIN_PASSWORD:-change-me-please-12+}
+      STORAGE_DIR: /app/storage
+      RUN_SEED: ${RUN_SEED:-false}
     ports:
-      - '4100:4100'
+      - '3100:3000'
     volumes:
-      - notesetc_storage:/app/storage # attachments (untrusted), persistent
+      - notesetc_storage:/app/storage # attachments, persistent
     healthcheck:
       test:
-        ['CMD', 'node', '-e', "fetch('http://localhost:4100/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+        ['CMD', 'node', '-e', "fetch('http://localhost:3000/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 10s
       timeout: 5s
       retries: 6
-      start_period: 20s
-
-  web:
-    build:
-      context: .
-      dockerfile: apps/web/Dockerfile
-    restart: unless-stopped
-    depends_on:
-      api:
-        condition: service_healthy
-    environment:
-      NODE_ENV: production
-      # Server-side calls to the API (container network).
-      API_INTERNAL_URL: http://api:4100
-      # Browser-side calls (host).
-      NEXT_PUBLIC_API_BASE_URL: http://localhost:4100
-    ports:
-      - '3100:3100'
+      start_period: 30s
 
 volumes:
   notesetc_db:
