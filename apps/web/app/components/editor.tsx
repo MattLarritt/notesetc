@@ -22,6 +22,11 @@ import { Attachment, AttachmentReader } from './attachment-extension';
 import { AttachDialog, type AttachResult } from './attach-dialog';
 import { IconPicker } from './icon-picker';
 import { refreshNav } from '../../lib/nav-refresh';
+import {
+  IconAttach, IconBold, IconBulletList, IconCallout, IconCode, IconDiagram,
+  IconImage, IconItalic, IconLink, IconOrderedList, IconQuote, IconSection,
+  IconSubpages, IconTable,
+} from './editor-icons';
 
 async function csrf(): Promise<string> {
   const res = await fetch('/api/bff/auth/csrf', { credentials: 'include' });
@@ -233,8 +238,15 @@ export function PageEditor(props: EditorProps) {
     }
   }
 
-  const tb = (label: string, onClick: () => void, active = false, title?: string) => (
-    <button type="button" className="tb-btn" title={title} data-active={active || undefined} onClick={onClick}>
+  const tb = (label: React.ReactNode, onClick: () => void, active = false, title?: string) => (
+    <button
+      type="button"
+      className="tb-btn"
+      title={title}
+      aria-label={title}
+      data-active={active || undefined}
+      onClick={onClick}
+    >
       {label}
     </button>
   );
@@ -289,36 +301,40 @@ export function PageEditor(props: EditorProps) {
 
       {editor && (
         <div className="editor-toolbar">
-          {tb('B', () => cmd((c) => c.toggleBold().run()), editor.isActive('bold'), 'Bold')}
-          {tb('I', () => cmd((c) => c.toggleItalic().run()), editor.isActive('italic'), 'Italic')}
-          {tb('H1', () => cmd((c) => c.toggleHeading({ level: 1 }).run()), editor.isActive('heading', { level: 1 }))}
-          {tb('H2', () => cmd((c) => c.toggleHeading({ level: 2 }).run()), editor.isActive('heading', { level: 2 }))}
-          {tb('H3', () => cmd((c) => c.toggleHeading({ level: 3 }).run()), editor.isActive('heading', { level: 3 }))}
-          {tb('• List', () => cmd((c) => c.toggleBulletList().run()), editor.isActive('bulletList'))}
-          {tb('1. List', () => cmd((c) => c.toggleOrderedList().run()), editor.isActive('orderedList'))}
-          {tb('“ Quote', () => cmd((c) => c.toggleBlockquote().run()), editor.isActive('blockquote'))}
-          {tb('</> Code', () => cmd((c) => c.toggleCodeBlock().run()), editor.isActive('codeBlock'))}
-          {tb('◇ Diagram', () => cmd((c) => c.insertContent(
-            '\n```mermaid\nflowchart LR\n  A[Start] --> B{Decision}\n  B -->|Yes| C[Do a thing]\n  B -->|No| D[Do another]\n```\n',
-          ).run()), false, 'Insert a Mermaid diagram')}
-          {tb('Table', () => cmd((c) => c.insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()))}
-          {tb('🖼 Image', () => setImageOpen(true), false, 'Insert image')}
-          {tb('📎 Attach', () => setAttachOpen(true), false, 'Attach a document (PDF, Word, Excel, text, CSV)')}
-          {tb('🔗 Link', () => setLinkOpen(true), editor.isActive('link'), 'Insert link')}
-          {tb('☰ Subpages', () => cmd((c) => c.insertContent({ type: 'subpages' }).run()), false, 'Insert a list of this page’s subpages')}
-          <span className="tb-sep" />
-          {(['note', 'info', 'tip', 'warning'] as CalloutKind[]).map((k) => (
-            <button
-              key={k}
-              type="button"
-              className="tb-btn"
-              onClick={() => cmd((c) => c.toggleWrap('callout', { kind: k }).run())}
-            >
-              :{k}
-            </button>
-          ))}
-          <span className="tb-sep" />
-          {tb('▧ Section', () => cmd((c) => c.toggleWrap('section', { color: 'neutral' }).run()), false, 'Wrap in a coloured section')}
+          <div className="tb-group">
+            {tb(<IconBold />, () => cmd((c) => c.toggleBold().run()), editor.isActive('bold'), 'Bold')}
+            {tb(<IconItalic />, () => cmd((c) => c.toggleItalic().run()), editor.isActive('italic'), 'Italic')}
+            {tb(<span className="tb-text">H1</span>, () => cmd((c) => c.toggleHeading({ level: 1 }).run()), editor.isActive('heading', { level: 1 }), 'Heading 1')}
+            {tb(<span className="tb-text">H2</span>, () => cmd((c) => c.toggleHeading({ level: 2 }).run()), editor.isActive('heading', { level: 2 }), 'Heading 2')}
+            {tb(<span className="tb-text">H3</span>, () => cmd((c) => c.toggleHeading({ level: 3 }).run()), editor.isActive('heading', { level: 3 }), 'Heading 3')}
+          </div>
+          <div className="tb-group">
+            {tb(<IconBulletList />, () => cmd((c) => c.toggleBulletList().run()), editor.isActive('bulletList'), 'Bullet list')}
+            {tb(<IconOrderedList />, () => cmd((c) => c.toggleOrderedList().run()), editor.isActive('orderedList'), 'Numbered list')}
+            {tb(<IconQuote />, () => cmd((c) => c.toggleBlockquote().run()), editor.isActive('blockquote'), 'Quote')}
+            {tb(<IconCode />, () => cmd((c) => c.toggleCodeBlock().run()), editor.isActive('codeBlock'), 'Code block')}
+          </div>
+          <div className="tb-group">
+            {tb(<IconLink />, () => setLinkOpen(true), editor.isActive('link'), 'Insert link')}
+            {tb(<IconImage />, () => setImageOpen(true), false, 'Insert image')}
+            {tb(<IconAttach />, () => setAttachOpen(true), false, 'Attach a document (PDF, Word, Excel, text, CSV)')}
+            {tb(<IconTable />, () => cmd((c) => c.insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()), false, 'Insert table')}
+            {tb(<IconDiagram />, () => cmd((c) => c.insertContent(
+              '\n```mermaid\nflowchart LR\n  A[Start] --> B{Decision}\n  B -->|Yes| C[Do a thing]\n  B -->|No| D[Do another]\n```\n',
+            ).run()), false, 'Insert a diagram')}
+            {tb(<IconSubpages />, () => cmd((c) => c.insertContent({ type: 'subpages' }).run()), false, 'Insert a list of this page’s subpages')}
+          </div>
+          <div className="tb-group">
+            {(['note', 'info', 'tip', 'warning'] as CalloutKind[]).map((k) =>
+              tb(
+                <span className={`tb-callout tb-callout-${k}`}><IconCallout size={15} /></span>,
+                () => cmd((c) => c.toggleWrap('callout', { kind: k }).run()),
+                editor.isActive('callout', { kind: k }),
+                `${k[0].toUpperCase()}${k.slice(1)} callout`,
+              ),
+            )}
+            {tb(<IconSection />, () => cmd((c) => c.toggleWrap('section', { color: 'neutral' }).run()), editor.isActive('section'), 'Coloured section')}
+          </div>
         </div>
       )}
       </div>

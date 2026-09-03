@@ -144,7 +144,8 @@ const TOOLS: ToolDef[] = [
   {
     name: 'create_page',
     description:
-      'Create a new page (NEFM Markdown content). It starts as a DRAFT — call publish_page to make it visible. Requires editor access to the space.',
+      'Create a new page (NEFM Markdown content). It starts as a DRAFT — call publish_page to make it visible. Requires editor access to the space.' +
+      ' NEFM extends Markdown with: :::note/info/tip/warning callouts, ::::section coloured panels, and ```mermaid fenced blocks that render as diagrams. Use a mermaid block for flowcharts, sequence, network or state diagrams.',
     parameters: {
       type: 'object',
       properties: {
@@ -159,7 +160,8 @@ const TOOLS: ToolDef[] = [
   {
     name: 'update_page',
     description:
-      'Replace a page\'s content and/or title. ALWAYS get_page first and send the complete new Markdown — this overwrites the whole body. Preserve everything the user did not ask you to change.',
+      'Replace a page\'s content and/or title. ALWAYS get_page first and send the complete new Markdown — this overwrites the whole body. Preserve everything the user did not ask you to change.' +
+      ' NEFM extends Markdown with: :::note/info/tip/warning callouts, ::::section coloured panels, and ```mermaid fenced blocks that render as diagrams. Use a mermaid block for flowcharts, sequence, network or state diagrams.',
     parameters: {
       type: 'object',
       properties: {
