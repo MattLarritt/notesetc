@@ -89,6 +89,90 @@ export class McpService {
     );
 
     server.registerTool(
+      'create_space',
+      {
+        title: 'Create space',
+        description:
+          'Create a new space (global admin). The key must be uppercase letters/digits starting with a letter (e.g. HOME, IT-2). The creator becomes its space admin.',
+        inputSchema: {
+          key: z.string().min(2).max(32).describe('Uppercase key, e.g. HOME.'),
+          name: z.string().min(1).max(200).describe('Display name.'),
+          description: z.string().max(2000).optional(),
+          icon: z.string().optional().describe('Optional icon name.'),
+        },
+      },
+      (args) =>
+        run(async () => {
+          const sp = await this.spaces.create(
+            principal,
+            {
+              key: String(args.key),
+              name: String(args.name),
+              description: args.description ? String(args.description) : undefined,
+              icon: args.icon ? String(args.icon) : undefined,
+            },
+            ctx,
+          );
+          return { id: sp.id, key: sp.key, name: sp.name, status: sp.status };
+        }),
+    );
+
+    server.registerTool(
+      'update_space',
+      {
+        title: 'Update space',
+        description:
+          'Rename a space or change its description/icon/overview (space admin+). The key is immutable. Pass only the fields to change.',
+        inputSchema: {
+          spaceId: z.string().describe('The space id.'),
+          name: z.string().min(1).max(200).optional().describe('New display name.'),
+          description: z.string().max(2000).nullable().optional(),
+          icon: z.string().nullable().optional(),
+          overview: z.string().max(100_000).nullable().optional().describe('Space landing content (Markdown).'),
+        },
+      },
+      (args) =>
+        run(async () => {
+          const patch: Record<string, unknown> = {};
+          if (args.name !== undefined) patch.name = String(args.name);
+          if (args.description !== undefined) patch.description = args.description === null ? null : String(args.description);
+          if (args.icon !== undefined) patch.icon = args.icon === null ? null : String(args.icon);
+          if (args.overview !== undefined) patch.overview = args.overview === null ? null : String(args.overview);
+          const sp = await this.spaces.update(principal, String(args.spaceId), patch, ctx);
+          return { id: sp.id, key: sp.key, name: sp.name, status: sp.status };
+        }),
+    );
+
+    server.registerTool(
+      'archive_space',
+      {
+        title: 'Archive space',
+        description:
+          'Archive a space (space admin+). Archiving HIDES the space and its pages but deletes nothing — the reversible alternative to deletion. Use unarchive_space to restore it. There is no hard delete.',
+        inputSchema: { spaceId: z.string().describe('The space id.') },
+      },
+      (args) =>
+        run(async () => {
+          const sp = await this.spaces.archive(principal, String(args.spaceId), ctx);
+          return { id: sp.id, key: sp.key, name: sp.name, status: sp.status };
+        }),
+    );
+
+    server.registerTool(
+      'unarchive_space',
+      {
+        title: 'Unarchive space',
+        description: 'Restore an archived space (space admin+).',
+        inputSchema: { spaceId: z.string().describe('The space id.') },
+      },
+      (args) =>
+        run(async () => {
+          const sp = await this.spaces.unarchive(principal, String(args.spaceId), ctx);
+          return { id: sp.id, key: sp.key, name: sp.name, status: sp.status };
+        }),
+    );
+
+    server.registerTool(
       'search_pages',
       {
         title: 'Search pages',

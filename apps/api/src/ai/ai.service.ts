@@ -67,6 +67,54 @@ const TOOLS: ToolDef[] = [
     parameters: { type: 'object', properties: {} },
   },
   {
+    name: 'create_space',
+    description:
+      'Create a new space. Key must be uppercase letters/digits starting with a letter (e.g. HOME). Confirm with the user before creating.',
+    parameters: {
+      type: 'object',
+      properties: {
+        key: { type: 'string', description: 'Uppercase key, e.g. HOME.' },
+        name: { type: 'string' },
+        description: { type: 'string' },
+        icon: { type: 'string' },
+      },
+      required: ['key', 'name'],
+    },
+  },
+  {
+    name: 'update_space',
+    description: 'Rename a space or change its description/icon. The key is immutable. Pass only fields to change.',
+    parameters: {
+      type: 'object',
+      properties: {
+        spaceId: { type: 'string' },
+        name: { type: 'string' },
+        description: { type: 'string' },
+        icon: { type: 'string' },
+      },
+      required: ['spaceId'],
+    },
+  },
+  {
+    name: 'archive_space',
+    description:
+      'Archive a space — hides it and its pages without deleting anything (the reversible alternative to deletion; there is no hard delete). Always confirm with the user first.',
+    parameters: {
+      type: 'object',
+      properties: { spaceId: { type: 'string' } },
+      required: ['spaceId'],
+    },
+  },
+  {
+    name: 'unarchive_space',
+    description: 'Restore an archived space.',
+    parameters: {
+      type: 'object',
+      properties: { spaceId: { type: 'string' } },
+      required: ['spaceId'],
+    },
+  },
+  {
     name: 'list_pages',
     description: 'List all pages in a space: id, title, parentId — useful to see the page tree.',
     parameters: {
@@ -411,6 +459,39 @@ export class AiService {
           );
           trace.push({ tool: 'list_attachments', summary: `${rows.length} files` });
           return JSON.stringify(rows);
+        }
+        case 'create_space': {
+          const sp = await this.spaces.create(
+            principal,
+            {
+              key: String(a.key ?? ''),
+              name: String(a.name ?? ''),
+              description: a.description ? String(a.description) : undefined,
+              icon: a.icon ? String(a.icon) : undefined,
+            },
+            ctx,
+          );
+          trace.push({ tool: 'create_space', summary: sp.name });
+          return JSON.stringify({ id: sp.id, key: sp.key, name: sp.name, status: sp.status });
+        }
+        case 'update_space': {
+          const patch: Record<string, unknown> = {};
+          if (a.name !== undefined) patch.name = String(a.name);
+          if (a.description !== undefined) patch.description = a.description === null ? null : String(a.description);
+          if (a.icon !== undefined) patch.icon = a.icon === null ? null : String(a.icon);
+          const sp = await this.spaces.update(principal, String(a.spaceId ?? ''), patch, ctx);
+          trace.push({ tool: 'update_space', summary: sp.name });
+          return JSON.stringify({ id: sp.id, key: sp.key, name: sp.name, status: sp.status });
+        }
+        case 'archive_space': {
+          const sp = await this.spaces.archive(principal, String(a.spaceId ?? ''), ctx);
+          trace.push({ tool: 'archive_space', summary: sp.name });
+          return JSON.stringify({ id: sp.id, key: sp.key, name: sp.name, status: sp.status });
+        }
+        case 'unarchive_space': {
+          const sp = await this.spaces.unarchive(principal, String(a.spaceId ?? ''), ctx);
+          trace.push({ tool: 'unarchive_space', summary: sp.name });
+          return JSON.stringify({ id: sp.id, key: sp.key, name: sp.name, status: sp.status });
         }
         case 'create_page': {
           const d = await this.pages.create(
