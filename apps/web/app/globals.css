@@ -2692,3 +2692,29 @@ a:hover {
   text-align: left;
 }
 .nav-empty-action:hover { border-color: var(--color-primary); color: var(--color-text); }
+
+/* ---- Mermaid diagrams (rendered from ```mermaid blocks) ---- */
+.mermaid-figure {
+  margin: 1rem 0;
+  padding: 1rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  overflow-x: auto;
+  text-align: center;
+}
+.mermaid-figure svg {
+  max-width: 100%;
+  height: auto;
+}
+/* A diagram that failed to parse keeps its source, subtly flagged. */
+pre.mermaid-error {
+  border-left: 3px solid var(--color-danger, #a33);
+}
+pre.mermaid-error::before {
+  content: 'Diagram could not be rendered — showing source';
+  display: block;
+  font-size: 0.75rem;
+  color: var(--color-danger, #a33);
+  margin-bottom: 0.4rem;
+}

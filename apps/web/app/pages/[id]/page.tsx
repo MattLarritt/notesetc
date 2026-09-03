@@ -12,6 +12,7 @@ import { loadProposalItems } from './proposal-data';
 import { CommentsModal } from './comments-modal';
 import { renderComments } from './comment-render';
 import { AttachmentBits } from '../../components/attachment-viewer';
+import { MermaidBlocks } from '../../components/mermaid-blocks';
 import { SparkIcon } from '../../components/ai-icons';
 
 export const dynamic = 'force-dynamic';
@@ -180,6 +181,7 @@ export default async function PageView({ params }: { params: Promise<{ id: strin
           </>
         )}
         <AttachmentBits />
+        <MermaidBlocks />
       </div>
     </div>
   );

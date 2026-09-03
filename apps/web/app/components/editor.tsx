@@ -298,6 +298,9 @@ export function PageEditor(props: EditorProps) {
           {tb('1. List', () => cmd((c) => c.toggleOrderedList().run()), editor.isActive('orderedList'))}
           {tb('“ Quote', () => cmd((c) => c.toggleBlockquote().run()), editor.isActive('blockquote'))}
           {tb('</> Code', () => cmd((c) => c.toggleCodeBlock().run()), editor.isActive('codeBlock'))}
+          {tb('◇ Diagram', () => cmd((c) => c.insertContent(
+            '\n```mermaid\nflowchart LR\n  A[Start] --> B{Decision}\n  B -->|Yes| C[Do a thing]\n  B -->|No| D[Do another]\n```\n',
+          ).run()), false, 'Insert a Mermaid diagram')}
           {tb('Table', () => cmd((c) => c.insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()))}
           {tb('🖼 Image', () => setImageOpen(true), false, 'Insert image')}
           {tb('📎 Attach', () => setAttachOpen(true), false, 'Attach a document (PDF, Word, Excel, text, CSV)')}
