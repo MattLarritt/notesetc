@@ -671,10 +671,31 @@ export function NavTree({ isGlobalAdmin = false }: { isGlobalAdmin?: boolean }) 
   return (
     <div ref={rootRef} className={`nav-tree${activeId ? ' dragging' : ''}`}>
       <div className="nav-header">
-        <span>{soloSpace ? soloSpace.name : 'Spaces'}</span>
+        {soloSpace ? (
+          <button
+            type="button"
+            className="nav-header-link"
+            onClick={() => router.push(`/spaces/${soloSpace.id}`)}
+            title="Open space"
+          >
+            {soloSpace.name}
+          </button>
+        ) : (
+          <span>Spaces</span>
+        )}
       </div>
       {roots.length === 0 ? (
-        <div className="nav-muted">No spaces available.</div>
+        soloSpace ? (
+          <button
+            type="button"
+            className="nav-empty-action"
+            onClick={() => router.push(`/spaces/${soloSpace.id}/new`)}
+          >
+            ＋ Add your first page
+          </button>
+        ) : (
+          <div className="nav-muted">No spaces yet.</div>
+        )
       ) : (
         <DndContext
           sensors={sensors}

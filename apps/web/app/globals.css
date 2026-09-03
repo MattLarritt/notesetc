@@ -2664,3 +2664,31 @@ a:hover {
   font-size: 0.88rem;
 }
 .admin-help-panel p { margin: 0.3rem 0; }
+
+/* Nav: solo-space header link + empty-state action */
+.nav-header-link {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.nav-header-link:hover { color: var(--color-primary); }
+.nav-empty-action {
+  display: block;
+  width: calc(100% - 1rem);
+  margin: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px dashed var(--color-border);
+  border-radius: 8px;
+  background: none;
+  color: var(--color-text-muted);
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+.nav-empty-action:hover { border-color: var(--color-primary); color: var(--color-text); }
