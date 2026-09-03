@@ -49,8 +49,10 @@ A built-in **MCP server** (`/api/v1/mcp`) exposes the whole surface to agents li
 ```bash
 git clone https://github.com/MattLarritt/notesetc.git
 cd notesetc
-docker compose up --build
+docker compose up
 ```
+
+Compose pulls the prebuilt image ([`mlarritt/notesetc`](https://hub.docker.com/r/mlarritt/notesetc)) — one container for the API and web app, plus Postgres. Add `--build` to build from source instead.
 
 Then open http://localhost:3100 and sign in with the bootstrap admin (`admin@example.com` / `change-me-please-12+` — change both via `.env`, see `.env.example`). Set `RUN_SEED=true` for a small demo workspace.
 

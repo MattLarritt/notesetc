@@ -21,7 +21,7 @@ services:
 
   app:
     build: .
-    image: mattlarritt/notesetc:latest
+    image: mlarritt/notesetc:latest
     restart: unless-stopped
     depends_on:
       db:
