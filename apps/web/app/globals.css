@@ -2711,18 +2711,59 @@ a:hover {
 
 /* ---- Mermaid diagrams (rendered from ```mermaid blocks) ---- */
 .mermaid-figure {
+  position: relative;
   margin: 1rem 0;
-  padding: 1rem;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: 10px;
-  overflow-x: auto;
-  text-align: center;
+  overflow: hidden;
 }
-.mermaid-figure svg {
-  max-width: 100%;
-  height: auto;
+.mermaid-viewport {
+  overflow: auto;
+  max-height: 560px;
+  padding: 1rem;
+  cursor: grab;
+  touch-action: none;
 }
+.mermaid-viewport.grabbing { cursor: grabbing; }
+.mermaid-canvas {
+  display: inline-block;
+  transform-origin: top left;
+  transition: transform 0.05s linear;
+}
+.mermaid-canvas svg { display: block; height: auto; }
+.mermaid-controls {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  z-index: 2;
+  display: flex;
+  gap: 0.15rem;
+  padding: 0.15rem;
+  background: color-mix(in srgb, var(--color-surface) 88%, transparent);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  backdrop-filter: blur(3px);
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+.mermaid-figure:hover .mermaid-controls,
+.mermaid-controls:focus-within { opacity: 1; }
+.mermaid-ctrl-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: none;
+  background: none;
+  border-radius: 5px;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+.mermaid-ctrl-btn:hover { background: var(--color-bg); color: var(--color-text); }
+.mermaid-ctrl-btn.done { color: var(--color-success, #2e7d32); }
+.mermaid-ctrl-btn.failed { color: var(--color-danger, #a33); }
 /* A diagram that failed to parse keeps its source, subtly flagged. */
 pre.mermaid-error {
   border-left: 3px solid var(--color-danger, #a33);
