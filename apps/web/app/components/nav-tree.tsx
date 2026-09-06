@@ -5,9 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   DndContext,
   DragOverlay,
-  PointerSensor,
   closestCenter,
-  useSensor,
   useSensors,
   type DragStartEvent,
 } from '@dnd-kit/core';
@@ -148,7 +146,10 @@ export function NavTree({ isGlobalAdmin = false }: { isGlobalAdmin?: boolean }) 
   const scrollElRef = useRef<HTMLElement | null>(null);
 
   // A small drag distance starts the gesture — snappy without hijacking clicks.
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
+  // Drag-and-drop reordering is disabled: on touch devices it fired while
+  // scrolling/navigating and reordered pages by accident. Reorganise via the
+  // row menu (Move…, Sort alphabetically) instead. No sensors = DnD inert.
+  const sensors = useSensors();
 
   const toPageNodes = (
     data: {

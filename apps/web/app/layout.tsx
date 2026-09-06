@@ -7,6 +7,7 @@ import { NavTree } from './components/nav-tree';
 import { SearchBox } from './components/search-box';
 import { UserMenu } from './components/user-menu';
 import { AiMenu } from './components/ai-menu';
+import { NavToggle } from './components/nav-toggle';
 import 'material-symbols/outlined.css';
 import './globals.css';
 
@@ -58,6 +59,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
       <body>
         {/* Themed chrome */}
         <header className="app-titlebar">
+          {showSidebar && <NavToggle />}
           {/* Logo + wordmark link home (the document portal). */}
           <Link href="/" className="app-home-link" aria-label="Notes Etc home">
             <Logo />

@@ -2775,3 +2775,129 @@ pre.mermaid-error::before {
   color: var(--color-danger, #a33);
   margin-bottom: 0.4rem;
 }
+
+/* =====================================================================
+   Phone / narrow-screen layout
+   ===================================================================== */
+:root { --titlebar-h: 64px; }
+
+/* Hamburger + overlay only exist on narrow screens. */
+.nav-toggle { display: none; }
+.nav-overlay { display: none; }
+
+@media (max-width: 900px) {
+  :root { --titlebar-h: 56px; }
+
+  /* Fixed-height title bar so the drawer can sit exactly beneath it. */
+  .app-titlebar {
+    height: var(--titlebar-h);
+    padding: 0 0.75rem;
+    gap: 0.5rem;
+    position: sticky;
+    top: 0;
+    z-index: 50;
+  }
+  .search-box { flex: 1; min-width: 0; max-width: none; margin: 0 0.25rem; }
+  .search-box input { font-size: 0.9rem; }
+
+  .nav-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    margin-left: -0.35rem;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--chrome-text);
+    cursor: pointer;
+    flex: none;
+  }
+  .nav-toggle:active { background: rgba(255, 255, 255, 0.12); }
+
+  /* Single column; the nav becomes an off-canvas drawer. */
+  .app-shell,
+  .app-shell:has(.admin) { grid-template-columns: 1fr; }
+  .app-nav,
+  .app-shell:has(.admin) .app-nav {
+    display: flex;
+    position: fixed;
+    top: var(--titlebar-h);
+    bottom: 0;
+    left: 0;
+    width: min(320px, 86vw);
+    z-index: 45;
+    transform: translateX(-100%);
+    transition: transform 0.2s ease;
+    box-shadow: none;
+    border-right: 1px solid var(--nav-border);
+  }
+  body.nav-open .app-nav {
+    transform: translateX(0);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.28);
+  }
+  .nav-overlay {
+    position: fixed;
+    inset: var(--titlebar-h) 0 0 0;
+    z-index: 44;
+    background: rgba(40, 36, 30, 0.35);
+    display: none;
+  }
+  body.nav-open .nav-overlay { display: block; }
+  body.nav-open { overflow: hidden; }
+
+  /* Content */
+  .app-content { padding: 1rem 0.9rem 2rem; }
+  .doc h1 { font-size: 1.5rem; }
+  .doc-header { flex-direction: column; gap: 0.6rem; }
+  .doc-header-actions { justify-content: flex-start; }
+  .page-actions { gap: 0.4rem; }
+  .prose table {
+    display: block;
+    width: max-content;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .prose pre { font-size: 0.82rem; }
+
+  /* Admin */
+  .admin-main { padding: 1rem 0.9rem 2rem; overflow-x: auto; }
+  .admin-table { min-width: 560px; }
+  .tokens-page .admin-table { min-width: 720px; }
+
+  /* Editor */
+  .editor-column { max-width: none; }
+  .editor-aside { width: 100%; position: static; margin: 1rem 0; }
+
+  /* Modals fill the screen sensibly */
+  .modal { width: min(560px, 100vw - 1.5rem); max-height: 92vh; }
+
+  /* Chat composer stays reachable above the iOS home bar */
+  .ai-composer-wrap { padding-bottom: calc(0.75rem + env(safe-area-inset-bottom)); }
+  .ai-chat { height: calc(100dvh - var(--titlebar-h) - 1rem); }
+}
+
+@media (max-width: 460px) {
+  .app-title { display: none; }
+  .ai-msg-user { max-width: 90%; }
+}
+
+/* Bigger tap targets whenever the primary pointer is a finger. */
+@media (pointer: coarse) {
+  .nav-label { padding: 0.6rem 0.35rem; font-size: 0.95rem; }
+  .nav-chevron { width: 1.9rem; font-size: 0.85rem; }
+  .nav-row-space .nav-label { padding: 0.65rem 0.35rem; }
+  .tb-btn { width: 36px; height: 36px; }
+  .ai-bar-btn { padding: 0.45rem 0.9rem; }
+  .user-menu-item { padding: 0.7rem 0.9rem; }
+  .ctx-item { padding: 0.7rem 0.9rem; }
+}
+
+/* iOS: use the dynamic viewport so the bottom isn't hidden behind Safari's bar. */
+@supports (height: 100dvh) {
+  @media (max-width: 900px) {
+    body { min-height: 100dvh; height: 100dvh; }
+  }
+}
