@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { usePathname } from 'next/navigation';
 
 /**
@@ -10,8 +11,11 @@ import { usePathname } from 'next/navigation';
  */
 export function NavToggle() {
   const pathname = usePathname();
+  const [mounted, setMounted] = useState(false);
 
   const close = () => document.body.classList.remove('nav-open');
+
+  useEffect(() => setMounted(true), []);
 
   useEffect(() => {
     close();
@@ -37,7 +41,10 @@ export function NavToggle() {
           <path d="M4 7 h16 M4 12 h16 M4 17 h16" />
         </svg>
       </button>
-      <div className="nav-overlay" onClick={close} aria-hidden />
+      {/* Portaled to <body>: inside the sticky title bar it would inherit that
+          bar's stacking context and sit ABOVE the drawer, dimming it and eating
+          every tap. */}
+      {mounted && createPortal(<div className="nav-overlay" onClick={close} aria-hidden />, document.body)}
     </>
   );
 }
