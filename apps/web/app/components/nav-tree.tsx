@@ -35,8 +35,6 @@ interface PageNode {
 }
 type Node = SpaceNode | PageNode;
 
-/** Pixels of indentation per nesting level. */
-const INDENT = 14;
 /** How far right you must drag before a drop switches from "between" to "into". */
 const NEST_DELTA = 22;
 
@@ -594,8 +592,8 @@ export function NavTree({ isGlobalAdmin = false }: { isGlobalAdmin?: boolean }) 
           menuTarget?.id === node.id ? ' ctx-active' : ''
         }`}
         style={{
-          paddingLeft: 6 + depth * INDENT,
-          ['--drop-indent' as string]: `${6 + depth * INDENT}px`,
+          ['--depth' as string]: depth,
+          ['--drop-indent' as string]: `calc(6px + ${depth} * var(--nav-indent))`,
           transform: CSS.Translate.toString(transform),
           transition,
         }}

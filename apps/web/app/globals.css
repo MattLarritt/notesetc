@@ -2901,3 +2901,20 @@ pre.mermaid-error::before {
     body { min-height: 100dvh; height: 100dvh; }
   }
 }
+
+/* ---- Nav tree hierarchy: CSS-driven indent + guide lines ----------------
+   Rows publish --depth; indent scales with pointer type so nesting stays
+   legible on phones. A faint vertical guide sits under each parent level so
+   children visibly hang off it (depth 0 computes off-screen and vanishes). */
+:root { --nav-indent: 16px; }
+@media (pointer: coarse) { :root { --nav-indent: 22px; } }
+
+.nav-row[data-page="1"] {
+  padding-left: calc(6px + var(--depth, 0) * var(--nav-indent));
+  background-image: linear-gradient(var(--nav-border), var(--nav-border));
+  background-repeat: no-repeat;
+  background-size: 1px 100%;
+  background-position: calc(6px + (var(--depth, 0) - 1) * var(--nav-indent) + 7px) 0;
+}
+.nav-row[data-page="1"]:hover,
+.nav-row[data-page="1"].active { background-image: none; }
