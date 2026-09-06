@@ -2797,8 +2797,12 @@ pre.mermaid-error::before {
     top: 0;
     z-index: 50;
   }
-  .search-box { flex: 1; min-width: 0; max-width: none; margin: 0 0.25rem; }
-  .search-box input { font-size: 0.9rem; }
+  /* Search takes every spare pixel: the spacer would otherwise split the
+     free width with it 50/50. */
+  .app-titlebar .spacer { display: none; }
+  .search-box { flex: 1; min-width: 0; max-width: none; margin: 0 0.35rem 0 0.25rem; }
+  .search-box input { font-size: 0.95rem; width: 100%; }
+  .app-home-link { flex: none; }
 
   .nav-toggle {
     display: inline-flex;
