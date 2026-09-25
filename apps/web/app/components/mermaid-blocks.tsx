@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import { describeDiagram, readHeight } from '../../lib/diagram-meta';
 
 /**
  * Renders ```mermaid fenced code blocks in page content as diagrams, themed to
@@ -8,8 +9,10 @@ import { useEffect } from 'react';
  * source, so nothing new reaches the server-side sanitizer. mermaid runs with
  * securityLevel 'strict'.
  *
- * Each diagram gets a pan/zoom viewport (drag to pan, wheel or buttons to zoom)
- * and a Copy Image button that rasterizes the SVG to a PNG on the clipboard.
+ * Each diagram gets a header (its title or kind, and the controls), a pan/zoom viewport
+ * (drag to pan, wheel or buttons to zoom, fit to view), fullscreen, and a Copy Image
+ * button that rasterizes the SVG to a PNG on the clipboard. The viewport's height comes
+ * from the source's `%% height: N` line when it has one — see lib/diagram-meta.
  */
 
 function themeVars(): Record<string, string> {
@@ -98,44 +101,95 @@ async function svgToPng(svg: SVGSVGElement, scale: number): Promise<Blob> {
   );
 }
 
-/** Build the interactive figure around a freshly rendered SVG string. */
-function buildFigure(svgMarkup: string): HTMLElement {
+const ICONS = {
+  zoomOut: '<path d="M5 12 h14"/>',
+  zoomIn: '<path d="M12 5 v14 M5 12 h14"/>',
+  reset: '<path d="M4 9 a8 8 0 1 1 -.5 4"/><path d="M4 5 v4 h4"/>',
+  fit: '<path d="M4 9 V4 h5 M20 9 V4 h-5 M4 15 v5 h5 M20 15 v5 h-5"/><rect x="9" y="9" width="6" height="6" rx="1"/>',
+  copy: '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8 V6 a2 2 0 0 0 -2 -2 H6 a2 2 0 0 0 -2 2 v8 a2 2 0 0 0 2 2 h2"/>',
+  expand: '<path d="M14 4 h6 v6 M10 20 H4 v-6 M20 4 l-7 7 M4 20 l7 -7"/>',
+  collapse: '<path d="M20 10 h-6 V4 M4 14 h6 v6 M14 10 l7 -7 M10 14 l-7 7"/>',
+};
+
+/**
+ * Build the interactive figure around a freshly rendered SVG string.
+ *
+ * A header bar names the diagram (its title, or its kind) and carries the controls:
+ * zoom, fit, copy as image, and fullscreen. The viewport takes the height the source
+ * asks for (`%% height: N`, set from the editor), or sizes to the diagram up to a cap.
+ */
+function buildFigure(svgMarkup: string, source: string): HTMLElement {
   const fig = document.createElement('figure');
   fig.className = 'mermaid-figure';
 
+  const head = document.createElement('div');
+  head.className = 'mermaid-head';
+  const title = document.createElement('span');
+  title.className = 'mermaid-title';
+  title.textContent = describeDiagram(source);
+  const controls = document.createElement('div');
+  controls.className = 'mermaid-controls';
+  head.appendChild(title);
+  head.appendChild(controls);
+
   const viewport = document.createElement('div');
   viewport.className = 'mermaid-viewport';
+  const height = readHeight(source);
+  if (height) {
+    viewport.style.height = `${height}px`;
+    viewport.classList.add('fixed-height');
+  }
   const canvas = document.createElement('div');
   canvas.className = 'mermaid-canvas';
   canvas.innerHTML = svgMarkup;
   viewport.appendChild(canvas);
 
-  const controls = document.createElement('div');
-  controls.className = 'mermaid-controls';
-
   let scale = 1;
   const apply = () => (canvas.style.transform = `scale(${scale})`);
   const zoom = (factor: number) => {
-    scale = Math.min(4, Math.max(0.3, scale * factor));
+    scale = Math.min(4, Math.max(0.2, scale * factor));
     apply();
   };
+  /** Scale the whole diagram to fit the viewport as it is now — its height and its width. */
+  const fit = () => {
+    const svg = canvas.querySelector('svg');
+    if (!svg) return;
+    const box = svg.getBoundingClientRect();
+    const w = box.width / scale;
+    const h = box.height / scale;
+    const style = getComputedStyle(viewport);
+    const padX = parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
+    const padY = parseFloat(style.paddingTop) + parseFloat(style.paddingBottom);
+    const availW = viewport.clientWidth - padX;
+    const availH = viewport.clientHeight - padY;
+    if (!w || !h || availW <= 0 || availH <= 0) return;
+    scale = Math.min(4, Math.max(0.2, Math.min(availW / w, availH / h)));
+    apply();
+    viewport.scrollTo(0, 0);
+  };
 
-  const btn = (title: string, node: Node, onClick: () => void) => {
+  const btn = (label: string, paths: string, onClick: () => void) => {
     const b = document.createElement('button');
     b.type = 'button';
     b.className = 'mermaid-ctrl-btn';
-    b.title = title;
-    b.setAttribute('aria-label', title);
-    b.appendChild(node);
+    b.title = label;
+    b.setAttribute('aria-label', label);
+    b.appendChild(icon(paths));
     b.addEventListener('click', onClick);
     return b;
   };
+  const setIcon = (b: HTMLButtonElement, label: string, paths: string) => {
+    b.title = label;
+    b.setAttribute('aria-label', label);
+    b.replaceChildren(icon(paths));
+  };
 
-  controls.appendChild(btn('Zoom out', icon('<path d="M5 12 h14"/>'), () => zoom(1 / 1.2)));
-  controls.appendChild(btn('Reset zoom', icon('<path d="M4 9 a8 8 0 1 1 -.5 4"/><path d="M4 5 v4 h4"/>'), () => { scale = 1; apply(); viewport.scrollTo(0, 0); }));
-  controls.appendChild(btn('Zoom in', icon('<path d="M12 5 v14 M5 12 h14"/>'), () => zoom(1.2)));
+  controls.appendChild(btn('Zoom out', ICONS.zoomOut, () => zoom(1 / 1.2)));
+  controls.appendChild(btn('Actual size', ICONS.reset, () => { scale = 1; apply(); viewport.scrollTo(0, 0); }));
+  controls.appendChild(btn('Zoom in', ICONS.zoomIn, () => zoom(1.2)));
+  controls.appendChild(btn('Fit to view', ICONS.fit, fit));
 
-  const copyBtn = btn('Copy as image', icon('<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8 V6 a2 2 0 0 0 -2 -2 H6 a2 2 0 0 0 -2 2 v8 a2 2 0 0 0 2 2 h2"/>'), async () => {
+  const copyBtn = btn('Copy as image', ICONS.copy, async () => {
     try {
       const svg = canvas.querySelector('svg') as SVGSVGElement | null;
       if (!svg) return;
@@ -149,6 +203,63 @@ function buildFigure(svgMarkup: string): HTMLElement {
     }
   });
   controls.appendChild(copyBtn);
+
+  /*
+   * Fullscreen: the browser's own where it has one for elements (desktop browsers,
+   * iPad), and an in-page overlay where it does not (iPhone Safari only fullscreens
+   * video). Either way the diagram is fitted to the new space on the way in, and put
+   * back as it was on the way out.
+   */
+  const fsBtn = btn('Fullscreen', ICONS.expand, () => void toggleFullscreen());
+  controls.appendChild(fsBtn);
+
+  let overlay = false;
+  let before = 1;
+  const isFull = () => document.fullscreenElement === fig || overlay;
+  const entered = () => {
+    before = scale;
+    setIcon(fsBtn, 'Exit fullscreen', ICONS.collapse);
+    requestAnimationFrame(fit);
+  };
+  const left = () => {
+    scale = before;
+    apply();
+    setIcon(fsBtn, 'Fullscreen', ICONS.expand);
+  };
+  const onKey = (e: KeyboardEvent) => {
+    if (e.key === 'Escape' && overlay) closeOverlay();
+  };
+  const closeOverlay = () => {
+    overlay = false;
+    fig.classList.remove('is-overlay');
+    document.body.classList.remove('mermaid-overlay-open');
+    document.removeEventListener('keydown', onKey);
+    left();
+  };
+  async function toggleFullscreen() {
+    if (isFull()) {
+      if (overlay) closeOverlay();
+      else await document.exitFullscreen().catch(() => undefined);
+      return;
+    }
+    if (fig.requestFullscreen && document.fullscreenEnabled) {
+      try {
+        await fig.requestFullscreen();
+        return; // fullscreenchange does the rest
+      } catch {
+        /* refused — fall through to the overlay */
+      }
+    }
+    overlay = true;
+    fig.classList.add('is-overlay');
+    document.body.classList.add('mermaid-overlay-open');
+    document.addEventListener('keydown', onKey);
+    entered();
+  }
+  fig.addEventListener('fullscreenchange', () => {
+    if (document.fullscreenElement === fig) entered();
+    else left();
+  });
 
   // Wheel zoom (only when the pointer is over the diagram).
   viewport.addEventListener('wheel', (e) => {
@@ -174,7 +285,7 @@ function buildFigure(svgMarkup: string): HTMLElement {
   viewport.addEventListener('pointerup', endDrag);
   viewport.addEventListener('pointercancel', endDrag);
 
-  fig.appendChild(controls);
+  fig.appendChild(head);
   fig.appendChild(viewport);
   return fig;
 }
@@ -203,7 +314,7 @@ export function MermaidBlocks() {
         const pre = code.parentElement as HTMLElement;
         try {
           const { svg } = await mermaid.render(`netc-mermaid-${Date.now()}-${i}`, source);
-          pre.replaceWith(buildFigure(svg));
+          pre.replaceWith(buildFigure(svg, source));
         } catch {
           pre.classList.add('mermaid-error');
         }

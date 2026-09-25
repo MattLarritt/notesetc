@@ -16,6 +16,7 @@
     "@iconify-json/logos": "^1.2.11",
     "@notesetc/shared": "*",
     "@tiptap/core": "^2.27.2",
+    "@tiptap/extension-code-block": "^2.27.2",
     "@tiptap/extension-image": "^2.27.2",
     "@tiptap/extension-link": "^2.27.2",
     "@tiptap/extension-table": "^2.27.2",

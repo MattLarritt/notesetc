@@ -242,7 +242,7 @@ export class McpService {
         title: 'Create page',
         description:
           'Create a new page in a space (requires editor access). Content is NEFM Markdown.' +
-          ' NEFM extends Markdown with: :::note/info/tip/warning callouts, ::::section coloured panels, and ```mermaid fenced blocks that render as diagrams. Use a mermaid block for flowcharts, sequence, network or state diagrams.',
+          ' NEFM extends Markdown with: :::note/info/tip/warning callouts, ::::section coloured panels, and ```mermaid fenced blocks that render as diagrams. Use a mermaid block for flowcharts, sequence, network or state diagrams; a first line of `%% height: 600` sets how tall it shows, in pixels.',
         inputSchema: {
           spaceId: z.string().describe('The space id.'),
           title: z.string().min(1).describe('Page title.'),
@@ -272,7 +272,7 @@ export class McpService {
         title: 'Update page',
         description:
           'Update a page (requires editor access). Fetch the page first with get_page and pass its versionNumber as baseVersionNumber; a mismatch means someone else edited it.' +
-          ' NEFM extends Markdown with: :::note/info/tip/warning callouts, ::::section coloured panels, and ```mermaid fenced blocks that render as diagrams. Use a mermaid block for flowcharts, sequence, network or state diagrams.',
+          ' NEFM extends Markdown with: :::note/info/tip/warning callouts, ::::section coloured panels, and ```mermaid fenced blocks that render as diagrams. Use a mermaid block for flowcharts, sequence, network or state diagrams; a first line of `%% height: 600` sets how tall it shows, in pixels.',
         inputSchema: {
           pageId: z.string().describe('The page id.'),
           baseVersionNumber: z.number().int().positive().describe('The versionNumber from get_page.'),

@@ -16,6 +16,7 @@ import { Section } from './section-extension';
 import { Subpages } from './subpages-extension';
 import { ApiRegion } from './api-region-extension';
 import { TrailingNode } from './trailing-node-extension';
+import { DiagramCodeBlock } from './code-block-extension';
 import { LinkDialog, type LinkResult } from './link-dialog';
 import { ImageDialog, type ImageResult } from './image-dialog';
 import { Attachment, AttachmentReader } from './attachment-extension';
@@ -66,7 +67,9 @@ export function PageEditor(props: EditorProps) {
   const editor = useEditor({
     immediatelyRender: false, // required for SSR (Next.js)
     extensions: [
-      StarterKit,
+      // StarterKit's code block is replaced by one that gives diagrams a height picker.
+      StarterKit.configure({ codeBlock: false }),
+      DiagramCodeBlock,
       Link.configure({ openOnClick: false }),
       Table.configure({ resizable: false }),
       TableRow,

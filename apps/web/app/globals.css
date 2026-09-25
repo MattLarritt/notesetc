@@ -2718,6 +2718,26 @@ a:hover {
   border-radius: 10px;
   overflow: hidden;
 }
+/* The header: what the diagram is on the left, its controls on the right. Always
+   visible — a control that only appears on hover doesn't exist on a phone. */
+.mermaid-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.3rem 0.4rem 0.3rem 0.8rem;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-bg);
+}
+.mermaid-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
 .mermaid-viewport {
   overflow: auto;
   max-height: 560px;
@@ -2725,6 +2745,8 @@ a:hover {
   cursor: grab;
   touch-action: none;
 }
+/* A height set in the editor is the height, not a ceiling. */
+.mermaid-viewport.fixed-height { max-height: none; }
 .mermaid-viewport.grabbing { cursor: grabbing; }
 .mermaid-canvas {
   display: inline-block;
@@ -2733,22 +2755,10 @@ a:hover {
 }
 .mermaid-canvas svg { display: block; height: auto; }
 .mermaid-controls {
-  position: absolute;
-  top: 0.5rem;
-  right: 0.5rem;
-  z-index: 2;
   display: flex;
-  gap: 0.15rem;
-  padding: 0.15rem;
-  background: color-mix(in srgb, var(--color-surface) 88%, transparent);
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  backdrop-filter: blur(3px);
-  opacity: 0;
-  transition: opacity 0.12s ease;
+  flex-shrink: 0;
+  gap: 0.1rem;
 }
-.mermaid-figure:hover .mermaid-controls,
-.mermaid-controls:focus-within { opacity: 1; }
 .mermaid-ctrl-btn {
   display: inline-flex;
   align-items: center;
@@ -2764,6 +2774,65 @@ a:hover {
 .mermaid-ctrl-btn:hover { background: var(--color-bg); color: var(--color-text); }
 .mermaid-ctrl-btn.done { color: var(--color-success, #2e7d32); }
 .mermaid-ctrl-btn.failed { color: var(--color-danger, #a33); }
+/* Fullscreen — the browser's, or the in-page overlay where there is none (iPhone).
+   The viewport takes all the room below the header, whatever height was set. */
+.mermaid-figure:fullscreen,
+.mermaid-figure.is-overlay {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  border: none;
+  border-radius: 0;
+  background: var(--color-surface);
+}
+.mermaid-figure.is-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px)
+    env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+}
+.mermaid-figure:fullscreen .mermaid-viewport,
+.mermaid-figure.is-overlay .mermaid-viewport {
+  flex: 1;
+  max-height: none;
+  height: auto !important;
+}
+body.mermaid-overlay-open { overflow: hidden; }
+
+/* In the editor: a diagram's source carries a small header with its height. */
+.code-block-wrap.is-diagram {
+  margin: 1rem 0;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.code-block-wrap.is-diagram > pre { margin: 0; border-radius: 0; }
+.diagram-edit-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.3rem 0.6rem;
+  background: var(--color-bg);
+  border-bottom: 1px solid var(--color-border);
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  user-select: none;
+}
+.diagram-edit-label { font-weight: 600; }
+.diagram-edit-height { display: inline-flex; align-items: center; gap: 0.35rem; }
+.diagram-edit-height select,
+.diagram-edit-custom {
+  font: inherit;
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  padding: 0.1rem 0.35rem;
+}
+.diagram-edit-custom { width: 5.5rem; }
+
 /* A diagram that failed to parse keeps its source, subtly flagged. */
 pre.mermaid-error {
   border-left: 3px solid var(--color-danger, #a33);
